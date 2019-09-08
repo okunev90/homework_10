@@ -6,7 +6,7 @@ function myHttp() {
                 if (response.status !== 200) {
                     return Promise.reject(response);
                 }
-                return response.json();
+                return Promise.resolve(response.json());
             });
         },
     };
@@ -14,19 +14,16 @@ function myHttp() {
 
 // Init http module
 const http = myHttp();
+const apiKey = '9c27b0f722b84da5a08312d2b125351b';
+const apiUrl = 'https://newsapi.org/v2';
 
 const newsService = {
-    apiKey: '9c27b0f722b84da5a08312d2b125351b',
-    apiUrl: 'https://newsapi.org/v2',
+
     topHeadlines(country = 'ua', categories = 'sports') {
-        return Promise.resolve().then(() => {
-            return http.request(`${this.apiUrl}/top-headlines?country=${country}&category=${categories}&apiKey=${this.apiKey}`);
-        });
+        return http.request(`${apiUrl}/top-headlines?country=${country}&category=${categories}&apiKey=${apiKey}`);
     },
     everything(text) {
-        return Promise.resolve().then(() => {
-            return http.request(`${this.apiUrl}/everything?q=${text}&apiKey=${this.apiKey}`);
-        });
+        return http.request(`${apiUrl}/everything?q=${text}&apiKey=${apiKey}`);
     },
 };
 
