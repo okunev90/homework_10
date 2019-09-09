@@ -1,74 +1,31 @@
 // Custom Http Module
 function myHttp() {
     return {
-        get(url, cb) {
-            try {
-                const xhr = new XMLHttpRequest();
-                xhr.open('GET', url);
-                xhr.addEventListener('load', () => {
-                    if (Math.floor(xhr.status / 100) !== 2) {
-                        cb(`Error. Status code: ${xhr.status}`, xhr);
-                        return;
-                    }
-                    const response = JSON.parse(xhr.responseText);
-                    cb(null, response);
-                });
-
-                xhr.addEventListener('error', () => {
-                    cb(`Error. Status code: ${xhr.status}`, xhr);
-                });
-
-                xhr.send();
-            } catch (error) {
-                cb(error);
-            }
-        },
-        post(url, body, headers, cb) {
-            try {
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', url);
-                xhr.addEventListener('load', () => {
-                    if (Math.floor(xhr.status / 100) !== 2) {
-                        cb(`Error. Status code: ${xhr.status}`, xhr);
-                        return;
-                    }
-                    const response = JSON.parse(xhr.responseText);
-                    cb(null, response);
-                });
-
-                xhr.addEventListener('error', () => {
-                    cb(`Error. Status code: ${xhr.status}`, xhr);
-                });
-
-                if (headers) {
-                    Object.entries(headers).forEach(([key, value]) => {
-                        xhr.setRequestHeader(key, value);
-                    });
+        request(url, cb) {
+            return fetch(url, cb).then(response => {
+                if (response.status !== 200) {
+                    return Promise.reject(response);
                 }
-
-                xhr.send(JSON.stringify(body));
-            } catch (error) {
-                cb(error);
-            }
+                return Promise.resolve(response.json());
+            });
         },
     };
 }
 
 // Init http module
 const http = myHttp();
-const newsService = (function () {
-    const apiKey = '9c27b0f722b84da5a08312d2b125351b';
-    const apiUrl = 'https://newsapi.org/v2';
+const apiKey = '9c27b0f722b84da5a08312d2b125351b';
+const apiUrl = 'https://newsapi.org/v2';
 
-    return {
-        topHeadlines([country = 'ua', category = 'sports'], cb) {
-            http.get(`${apiUrl}/top-headlines?country=${country}&category=${category}&apiKey=${apiKey}`, cb);
-        },
-        everything(text, cb) {
-            http.get(`${apiUrl}/everything?q=${text}&apiKey=${apiKey}`, cb);
-        }
-    }
-}());
+const newsService = {
+
+    topHeadlines(country = 'ua', categories = 'sports') {
+        return http.request(`${apiUrl}/top-headlines?country=${country}&category=${categories}&apiKey=${apiKey}`);
+    },
+    everything(text) {
+        return http.request(`${apiUrl}/everything?q=${text}&apiKey=${apiKey}`);
+    },
+};
 
 // Elements
 const newsContainer = document.querySelector('.news-container .row');
@@ -86,21 +43,34 @@ form.addEventListener('submit', e => {
     sortNews()
 });
 
-function sortNews() {
-    const countryValue = form.elements['country'].value;
-    const categoryValue = form.elements['category'].value;
-    const searchValue = form.elements['search'].value;
-    console.log(searchValue.length);
-    if (!searchValue.length) {
-        newsService.topHeadlines([countryValue, categoryValue], onGetResponse);
-    } else if (searchValue.length){
-        newsService.everything(searchValue, onGetResponse);
+function sortNews(country, categories, search, serchLength = false) {
+    if (serchLength) {
+        newsService.everything(search)
+            .then(res => onGetResponse(null, res))
+            .catch(err => onGetResponse(err));
+    } else {
+        newsService.topHeadlines(country, categories)
+            .then(res => renderNews(res.articles))
+            .catch(err => onGetResponse(err));
     }
-
 }
 
 function loadNews() {
-    newsService.topHeadlines(['ua', 'technology'], onGetResponse);
+    const form = document.querySelector('form');
+    sortNews();
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const countryValue = form.elements['country'].value;
+        const categoryValue = form.elements['category'].value;
+        const searchValue = form.elements['search'].value;
+        console.log(searchValue.length);
+        if (!searchValue.length) {
+            sortNews(countryValue, categoryValue);
+        } else if (searchValue.length) {
+            sortNews(countryValue, categoryValue, searchValue, true);
+        }
+    });
+
 }
 
 function onGetResponse(err, res) {
